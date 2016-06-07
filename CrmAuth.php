@@ -1,6 +1,6 @@
 <?php
 
-// include "CrmAuthenticationHeader.php";
+include_once "CrmAuthenticationHeader.php";
 class CrmAuth {
 	
 	/**
@@ -19,36 +19,38 @@ class CrmAuth {
 		$urnAddress = $this->GetUrnOnline ( $url );
 		$now = $_SERVER ['REQUEST_TIME'];
 		
-		$xml = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:a=\"http://www.w3.org/2005/08/addressing\" xmlns:u=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\">";
-		$xml .= "<s:Header>";
-		$xml .= "<a:Action s:mustUnderstand=\"1\">http://schemas.xmlsoap.org/ws/2005/02/trust/RST/Issue</a:Action>";
-		$xml .= "<a:MessageID>urn:uuid:" . $this->getGUID () . "</a:MessageID>";
-		$xml .= "<a:ReplyTo>";
-		$xml .= "<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>";
-		$xml .= "</a:ReplyTo>";
-		$xml .= "<a:To s:mustUnderstand=\"1\">https://login.microsoftonline.com/RST2.srf</a:To>";
-		$xml .= "<o:Security s:mustUnderstand=\"1\" xmlns:o=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<u:Timestamp u:Id=\"_0\">";
-		$xml .= "<u:Created>" . gmdate ( 'Y-m-d\TH:i:s.u\Z', $now ) . "</u:Created>";
-		$xml .= "<u:Expires>" . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . "</u:Expires>";
-		$xml .= "</u:Timestamp>";
-		$xml .= "<o:UsernameToken u:Id=\"uuid-" . $this->getGUID () . "-1\">";
-		$xml .= "<o:Username>" . $username . "</o:Username>";
-		$xml .= "<o:Password>" . $password . "</o:Password>";
-		$xml .= "</o:UsernameToken>";
-		$xml .= "</o:Security>";
-		$xml .= "</s:Header>";
-		$xml .= "<s:Body>";
-		$xml .= "<trust:RequestSecurityToken xmlns:trust=\"http://schemas.xmlsoap.org/ws/2005/02/trust\">";
-		$xml .= "<wsp:AppliesTo xmlns:wsp=\"http://schemas.xmlsoap.org/ws/2004/09/policy\">";
-		$xml .= "<a:EndpointReference>";
-		$xml .= "<a:Address>urn:" . $urnAddress . "</a:Address>";
-		$xml .= "</a:EndpointReference>";
-		$xml .= "</wsp:AppliesTo>";
-		$xml .= "<trust:RequestType>http://schemas.xmlsoap.org/ws/2005/02/trust/Issue</trust:RequestType>";
-		$xml .= "</trust:RequestSecurityToken>";
-		$xml .= "</s:Body>";
-		$xml .= "</s:Envelope>";
+		$xml = '
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+	<s:Header>
+		<a:Action s:mustUnderstand="1">http://schemas.xmlsoap.org/ws/2005/02/trust/RST/Issue</a:Action>
+		<a:MessageID>urn:uuid:' . $this->getGUID () . '</a:MessageID>
+		<a:ReplyTo>
+			<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
+		</a:ReplyTo>
+		<a:To s:mustUnderstand="1">https://login.microsoftonline.com/RST2.srf</a:To>
+		<o:Security s:mustUnderstand="1" xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+			<u:Timestamp u:Id="_0">
+				<u:Created>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', $now ) . '</u:Created>
+				<u:Expires>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . '</u:Expires>
+			</u:Timestamp>
+			<o:UsernameToken u:Id="uuid-' . $this->getGUID () . '-1">
+				<o:Username>' . $username . '</o:Username>
+				<o:Password>' . $password . '</o:Password>
+			</o:UsernameToken>
+		</o:Security>
+	</s:Header>
+	<s:Body>
+		<trust:RequestSecurityToken xmlns:trust="http://schemas.xmlsoap.org/ws/2005/02/trust">
+			<wsp:AppliesTo xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy">
+			<a:EndpointReference>
+				<a:Address>urn:' . $urnAddress . '</a:Address>
+			</a:EndpointReference>
+			</wsp:AppliesTo>
+			<trust:RequestType>http://schemas.xmlsoap.org/ws/2005/02/trust/Issue</trust:RequestType>
+		</trust:RequestSecurityToken>
+	</s:Body>
+</s:Envelope>
+		';
 		
 		$headers = array (
 				"POST " . "/RST2.srf" . " HTTP/1.1",
@@ -86,7 +88,8 @@ class CrmAuth {
 		
 		$authHeader = new CrmAuthenticationHeader ();
 		$authHeader->Expires = $tokenExpires;
-		$authHeader->Header = $this->CreateSoapHeaderOnline ( $url, $keyIdentifer, $token1, $token2 );
+		$authHeader->ExecuteHeader = $this->CreateSoapHeaderOnline ( $url, $keyIdentifer, $token1, $token2, 'Execute' );
+		$authHeader->CreateHeader = $this->CreateSoapHeaderOnline ( $url, $keyIdentifer, $token1, $token2, 'Create' );
 		
 		return $authHeader;
 	}
@@ -104,36 +107,38 @@ class CrmAuth {
 	 * @param String $token2
 	 *        	The second token from the initial request.
 	 */
-	function CreateSoapHeaderOnline($url, $keyIdentifer, $token1, $token2) {
-		$xml = "<s:Header>";
-		$xml .= "<a:Action s:mustUnderstand=\"1\">http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/Execute</a:Action>";
-		$xml .= "<Security xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<EncryptedData Id=\"Assertion0\" Type=\"http://www.w3.org/2001/04/xmlenc#Element\" xmlns=\"http://www.w3.org/2001/04/xmlenc#\">";
-		$xml .= "<EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#tripledes-cbc\"/>";
-		$xml .= "<ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\">";
-		$xml .= "<EncryptedKey>";
-		$xml .= "<EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p\"/>";
-		$xml .= "<ds:KeyInfo Id=\"keyinfo\">";
-		$xml .= "<wsse:SecurityTokenReference xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<wsse:KeyIdentifier EncodingType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary\" ValueType=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509SubjectKeyIdentifier\">" . $keyIdentifer . "</wsse:KeyIdentifier>";
-		$xml .= "</wsse:SecurityTokenReference>";
-		$xml .= "</ds:KeyInfo>";
-		$xml .= "<CipherData>";
-		$xml .= "<CipherValue>" . $token1 . "</CipherValue>";
-		$xml .= "</CipherData>";
-		$xml .= "</EncryptedKey>";
-		$xml .= "</ds:KeyInfo>";
-		$xml .= "<CipherData>";
-		$xml .= "<CipherValue>" . $token2 . "</CipherValue>";
-		$xml .= "</CipherData>";
-		$xml .= "</EncryptedData>";
-		$xml .= "</Security>";
-		$xml .= "<a:MessageID>urn:uuid:" . $this->getGUID () . "</a:MessageID>";
-		$xml .= "<a:ReplyTo>";
-		$xml .= "<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>";
-		$xml .= "</a:ReplyTo>";
-		$xml .= "<a:To s:mustUnderstand=\"1\">" . $url . "XRMServices/2011/Organization.svc</a:To>";
-		$xml .= "</s:Header>";
+	function CreateSoapHeaderOnline($url, $keyIdentifer, $token1, $token2, $action) {
+		$xml = '
+<s:Header>
+	<a:Action s:mustUnderstand="1">http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/'.$action.'</a:Action>
+		<Security xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+			<EncryptedData Id="Assertion0" Type="http://www.w3.org/2001/04/xmlenc#Element" xmlns="http://www.w3.org/2001/04/xmlenc#">
+			<EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#tripledes-cbc"/>
+			<ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+				<EncryptedKey>
+					<EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p"/>
+					<ds:KeyInfo Id="keyinfo">
+						<wsse:SecurityTokenReference xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+							<wsse:KeyIdentifier EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary" ValueType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-x509-token-profile-1.0#X509SubjectKeyIdentifier">' . $keyIdentifer . '</wsse:KeyIdentifier>
+						</wsse:SecurityTokenReference>
+					</ds:KeyInfo>
+					<CipherData>
+						<CipherValue>' . $token1 . '</CipherValue>
+					</CipherData>
+				</EncryptedKey>
+			</ds:KeyInfo>
+			<CipherData>
+				<CipherValue>' . $token2 . '</CipherValue>
+			</CipherData>
+			</EncryptedData>
+		</Security>
+		<a:MessageID>urn:uuid:' . $this->getGUID () . '</a:MessageID>
+		<a:ReplyTo>
+			<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
+		</a:ReplyTo>
+	<a:To s:mustUnderstand="1">' . $url . 'XRMServices/2011/Organization.svc</a:To>
+</s:Header>
+		';
 		
 		return $xml;
 	}
@@ -186,36 +191,38 @@ class CrmAuth {
 		$urnAddress = $url . "XRMServices/2011/Organization.svc";
 		$usernamemixed = $adfsUrl . "/13/usernamemixed";
 		
-		$xml = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:a=\"http://www.w3.org/2005/08/addressing\">";
-		$xml .= "<s:Header>";
-		$xml .= "<a:Action s:mustUnderstand=\"1\">http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue</a:Action>";
-		$xml .= "<a:MessageID>urn:uuid:" . $this->getGUID () . "</a:MessageID>";
-		$xml .= "<a:ReplyTo>";
-		$xml .= "<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>";
-		$xml .= "</a:ReplyTo>";
-		$xml .= "<Security s:mustUnderstand=\"1\" xmlns:u=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\" xmlns=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<u:Timestamp  u:Id=\"" . $this->getGUID () . "\">";
-		$xml .= "<u:Created>" . gmdate ( 'Y-m-d\TH:i:s.u\Z', $now ) . "</u:Created>";
-		$xml .= "<u:Expires>" . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . "</u:Expires>";
-		$xml .= "</u:Timestamp>";
-		$xml .= "<UsernameToken u:Id=\"" . $this->getGUID () . "\">";
-		$xml .= "<Username>" . $username . "</Username>";
-		$xml .= "<Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText\">" . $password . "</Password>";
-		$xml .= "</UsernameToken>";
-		$xml .= "</Security>";
-		$xml .= "<a:To s:mustUnderstand=\"1\">" . $usernamemixed . "</a:To>";
-		$xml .= "</s:Header>";
-		$xml .= "<s:Body>";
-		$xml .= "<trust:RequestSecurityToken xmlns:trust=\"http://docs.oasis-open.org/ws-sx/ws-trust/200512\">";
-		$xml .= "<wsp:AppliesTo xmlns:wsp=\"http://schemas.xmlsoap.org/ws/2004/09/policy\">";
-		$xml .= "<a:EndpointReference>";
-		$xml .= "<a:Address>" . $urnAddress . "</a:Address>";
-		$xml .= "</a:EndpointReference>";
-		$xml .= "</wsp:AppliesTo>";
-		$xml .= "<trust:RequestType>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</trust:RequestType>";
-		$xml .= "</trust:RequestSecurityToken>";
-		$xml .= "</s:Body>";
-		$xml .= "</s:Envelope>";
+		$xml = '
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing">
+	<s:Header>
+		<a:Action s:mustUnderstand="1">http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue</a:Action>
+		<a:MessageID>urn:uuid:' . $this->getGUID () . '</a:MessageID>
+		<a:ReplyTo>
+			<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
+		</a:ReplyTo>
+		<Security s:mustUnderstand="1" xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+			<u:Timestamp  u:Id="" . $this->getGUID () . "">
+				<u:Created>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', $now ) . '</u:Created>
+				<u:Expires>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . '</u:Expires>
+			</u:Timestamp>
+			<UsernameToken u:Id="' . $this->getGUID () . '">
+				<Username>' . $username . '</Username>
+				<Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">' . $password . '</Password>
+			</UsernameToken>
+		</Security>
+		<a:To s:mustUnderstand="1">' . $usernamemixed . '</a:To>
+	</s:Header>
+	<s:Body>
+		<trust:RequestSecurityToken xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">
+			<wsp:AppliesTo xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy">
+				<a:EndpointReference>
+					<a:Address>' . $urnAddress . '</a:Address>
+				</a:EndpointReference>
+			</wsp:AppliesTo>
+			<trust:RequestType>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</trust:RequestType>
+		</trust:RequestSecurityToken>
+	</s:Body>
+</s:Envelope>
+		';
 		
 		$headers = array (
 				"POST " . parse_url ( $usernamemixed, PHP_URL_PATH ) . " HTTP/1.1",
@@ -259,12 +266,33 @@ class CrmAuth {
 		
 		$created = gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '-1 minute', $now ) );
 		$expires = gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+5 minute', $now ) );
-		$timestamp = "<u:Timestamp xmlns:u=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\" u:Id=\"_0\"><u:Created>" . $created . "</u:Created><u:Expires>" . $expires . "</u:Expires></u:Timestamp>";
+		$timestamp = '
+<u:Timestamp xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" u:Id="_0">
+	<u:Created>' . $created . '</u:Created>
+	<u:Expires>' . $expires . '</u:Expires>
+</u:Timestamp>
+		';
 		
 		$hashedDataBytes = sha1 ( $timestamp, true );
 		$digestValue = base64_encode ( $hashedDataBytes );
 		
-		$signedInfo = "<SignedInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\"><CanonicalizationMethod Algorithm=\"http://www.w3.org/2001/10/xml-exc-c14n#\"></CanonicalizationMethod><SignatureMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#hmac-sha1\"></SignatureMethod><Reference URI=\"#_0\"><Transforms><Transform Algorithm=\"http://www.w3.org/2001/10/xml-exc-c14n#\"></Transform></Transforms><DigestMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#sha1\"></DigestMethod><DigestValue>" . $digestValue . "</DigestValue></Reference></SignedInfo>";
+		$signedInfo = '
+<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+	<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+	</CanonicalizationMethod>
+	<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#hmac-sha1">
+	</SignatureMethod>
+	<Reference URI="#_0">
+		<Transforms>
+			<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#">
+			</Transform>
+		</Transforms>
+		<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1">
+		</DigestMethod>
+		<DigestValue>' . $digestValue . '</DigestValue>
+	</Reference>
+</SignedInfo>
+		';
 		$binarySecretBytes = base64_decode ( $binarySecret );
 		$hmacHash = hash_hmac ( "sha1", $signedInfo, $binarySecretBytes, true );
 		$signatureValue = base64_encode ( $hmacHash );
@@ -305,65 +333,67 @@ class CrmAuth {
 	 *        	The header expiration date/tim.
 	 */
 	function CreateSoapHeaderOnPremise($url, $keyIdentifer, $token1, $token2, $x509IssuerName, $x509SerialNumber, $signatureValue, $digestValue, $created, $expires) {
-		$xml = "<s:Header>";
-		$xml .= "<a:Action s:mustUnderstand=\"1\">http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/Execute</a:Action>";
-		$xml .= "<a:MessageID>urn:uuid:" . $this->getGUID () . "</a:MessageID>";
-		$xml .= "<a:ReplyTo>";
-		$xml .= "<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>";
-		$xml .= "</a:ReplyTo>";
-		$xml .= "<a:To s:mustUnderstand=\"1\">" . $url . "XRMServices/2011/Organization.svc</a:To>";
-		$xml .= "<o:Security xmlns:o=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<u:Timestamp xmlns:u=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\" u:Id=\"_0\">";
-		$xml .= "<u:Created>" . $created . "</u:Created>";
-		$xml .= "<u:Expires>" . $expires . "</u:Expires>";
-		$xml .= "</u:Timestamp>";
-		$xml .= "<xenc:EncryptedData Type=\"http://www.w3.org/2001/04/xmlenc#Element\" xmlns:xenc=\"http://www.w3.org/2001/04/xmlenc#\">";
-		$xml .= "<xenc:EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#aes256-cbc\"/>";
-		$xml .= "<KeyInfo xmlns=\"http://www.w3.org/2000/09/xmldsig#\">";
-		$xml .= "<e:EncryptedKey xmlns:e=\"http://www.w3.org/2001/04/xmlenc#\">";
-		$xml .= "<e:EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p\">";
-		$xml .= "<DigestMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#sha1\"/>";
-		$xml .= "</e:EncryptionMethod>";
-		$xml .= "<KeyInfo>";
-		$xml .= "<o:SecurityTokenReference xmlns:o=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<X509Data>";
-		$xml .= "<X509IssuerSerial>";
-		$xml .= "<X509IssuerName>" . $x509IssuerName . "</X509IssuerName>";
-		$xml .= "<X509SerialNumber>" . $x509SerialNumber . "</X509SerialNumber>";
-		$xml .= "</X509IssuerSerial>";
-		$xml .= "</X509Data>";
-		$xml .= "</o:SecurityTokenReference>";
-		$xml .= "</KeyInfo>";
-		$xml .= "<e:CipherData>";
-		$xml .= "<e:CipherValue>" . $token1 . "</e:CipherValue>";
-		$xml .= "</e:CipherData>";
-		$xml .= "</e:EncryptedKey>";
-		$xml .= "</KeyInfo>";
-		$xml .= "<xenc:CipherData>";
-		$xml .= "<xenc:CipherValue>" . $token2 . "</xenc:CipherValue>";
-		$xml .= "</xenc:CipherData>";
-		$xml .= "</xenc:EncryptedData>";
-		$xml .= "<Signature xmlns=\"http://www.w3.org/2000/09/xmldsig#\">";
-		$xml .= "<SignedInfo>";
-		$xml .= "<CanonicalizationMethod Algorithm=\"http://www.w3.org/2001/10/xml-exc-c14n#\"/>";
-		$xml .= "<SignatureMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#hmac-sha1\"/>";
-		$xml .= "<Reference URI=\"#_0\">";
-		$xml .= "<Transforms>";
-		$xml .= "<Transform Algorithm=\"http://www.w3.org/2001/10/xml-exc-c14n#\"/>";
-		$xml .= "</Transforms>";
-		$xml .= "<DigestMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#sha1\"/>";
-		$xml .= "<DigestValue>" . $digestValue . "</DigestValue>";
-		$xml .= "</Reference>";
-		$xml .= "</SignedInfo>";
-		$xml .= "<SignatureValue>" . $signatureValue . "</SignatureValue>";
-		$xml .= "<KeyInfo>";
-		$xml .= "<o:SecurityTokenReference xmlns:o=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\">";
-		$xml .= "<o:KeyIdentifier ValueType=\"http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.0#SAMLAssertionID\">" . $keyIdentifer . "</o:KeyIdentifier>";
-		$xml .= "</o:SecurityTokenReference>";
-		$xml .= "</KeyInfo>";
-		$xml .= "</Signature>";
-		$xml .= "</o:Security>";
-		$xml .= "</s:Header>";
+		$xml = '
+<s:Header>
+	<a:Action s:mustUnderstand="1">http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/Execute</a:Action>
+	<a:MessageID>urn:uuid:' . $this->getGUID () . '</a:MessageID>
+	<a:ReplyTo>
+		<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
+	</a:ReplyTo>
+	<a:To s:mustUnderstand="1">' . $url . 'XRMServices/2011/Organization.svc</a:To>
+	<o:Security xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+		<u:Timestamp xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" u:Id="_0">
+			<u:Created>' . $created . '</u:Created>
+			<u:Expires>' . $expires . '</u:Expires>
+		</u:Timestamp>
+		<xenc:EncryptedData Type="http://www.w3.org/2001/04/xmlenc#Element" xmlns:xenc="http://www.w3.org/2001/04/xmlenc#">
+			<xenc:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#aes256-cbc"/>
+			<KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+				<e:EncryptedKey xmlns:e="http://www.w3.org/2001/04/xmlenc#">
+					<e:EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p">
+						<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+					</e:EncryptionMethod>
+					<KeyInfo>
+						<o:SecurityTokenReference xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+							<X509Data>
+								<X509IssuerSerial>
+									<X509IssuerName>' . $x509IssuerName . '</X509IssuerName>
+									<X509SerialNumber>' . $x509SerialNumber . '</X509SerialNumber>
+								</X509IssuerSerial>
+							</X509Data>
+						</o:SecurityTokenReference>
+					</KeyInfo>
+					<e:CipherData>
+						<e:CipherValue>' . $token1 . '</e:CipherValue>
+					</e:CipherData>
+				</e:EncryptedKey>
+			</KeyInfo>
+			<xenc:CipherData>
+				<xenc:CipherValue>' . $token2 . '</xenc:CipherValue>
+			</xenc:CipherData>
+		</xenc:EncryptedData>
+		<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+			<SignedInfo>
+				<CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+				<SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#hmac-sha1"/>
+				<Reference URI="#_0">
+					<Transforms>
+						<Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+					</Transforms>
+					<DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+					<DigestValue>' . $digestValue . '</DigestValue>
+				</Reference>
+			</SignedInfo>
+			<SignatureValue>' . $signatureValue . '</SignatureValue>
+			<KeyInfo>
+				<o:SecurityTokenReference xmlns:o="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+					<o:KeyIdentifier ValueType="http://docs.oasis-open.org/wss/oasis-wss-saml-token-profile-1.0#SAMLAssertionID">' . $keyIdentifer . '</o:KeyIdentifier>
+				</o:SecurityTokenReference>
+			</KeyInfo>
+		</Signature>
+	</o:Security>
+</s:Header>
+		';
 		
 		return $xml;
 	}
@@ -402,8 +432,10 @@ class CrmAuth {
 			mt_srand ( ( double ) microtime () * 10000 ); // optional for php 4.2.0 and up.
 			$charid = strtoupper ( md5 ( uniqid ( rand (), true ) ) );
 			$hyphen = chr ( 45 ); // "-"
-			$uuid = chr ( 123 ) . // "{"
-substr ( $charid, 0, 8 ) . $hyphen . substr ( $charid, 8, 4 ) . $hyphen . substr ( $charid, 12, 4 ) . $hyphen . substr ( $charid, 16, 4 ) . $hyphen . substr ( $charid, 20, 12 ) . chr ( 125 ); // "}"
+			$uuid = 
+			    chr ( 123 ) . // "{"
+				substr ( $charid, 0, 8 ) . $hyphen . substr ( $charid, 8, 4 ) . $hyphen . substr ( $charid, 12, 4 ) . $hyphen . substr ( $charid, 16, 4 ) . $hyphen . substr ( $charid, 20, 12 ) .
+				chr ( 125 ); // "}"
 			return $uuid;
 		}
 	}

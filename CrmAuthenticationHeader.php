@@ -2,6 +2,7 @@
 
 class CrmAuthenticationHeader
 {
-    public $Header;
+    public $ExecuteHeader;
+    public $CreateHeader;
     public $Expires;
 }
