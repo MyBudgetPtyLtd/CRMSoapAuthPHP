@@ -1,0 +1,28 @@
+{
+  "name": "MyBudgetPtyLtd/Dynamics-CRM",
+  "type": "library",
+  "description": "PHP Library for connecting to Dynamics CRM",
+  "keywords": ["Dynamics CRM"],
+  "homepage": "https://github.com/MyBudgetPtyLtd/Dynamics-CRM",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Jason Lattimer"
+    },
+    {
+      "name": "Steven Blom"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": ">=5.4.0"
+  },
+  "require-dev": {
+    "monolog/monolog": "*"
+  },
+  "autoload": {
+    "psr-0": {
+      "DynamicsCRM": ["src/DynamicsCRM/"]
+    }
+  }
+}

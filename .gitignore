@@ -1,2 +1,5 @@
 /config.php
 *.log
+/vendor
+/.idea
+/old
