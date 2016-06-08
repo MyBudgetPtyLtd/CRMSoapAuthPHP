@@ -1,6 +1,9 @@
 <?php
 namespace DynamicsCRM\Requests;
 
+use DOMDocument;
+use DynamicsCRM\Response\CreateEntityResponse;
+
 class CreateLeadRequest extends Request
 {
     private $firstName;
@@ -17,7 +20,8 @@ class CreateLeadRequest extends Request
         return $this;
     }
 
-    public function setConcreteUserId($userId) {
+    public function setUserId($userId)
+    {
         $this->userId = $userId;
         return $this;
     }
@@ -44,14 +48,14 @@ class CreateLeadRequest extends Request
 						<a:Value>1</a:Value>
 					</b:value>
 				</a:KeyValuePairOfstringanyType>
-				<!--a:KeyValuePairOfstringanyType>
+				<a:KeyValuePairOfstringanyType>
 					<b:key>ownerid</b:key>
 					<b:value i:type="a:EntityReference">
-						<a:Id>{'.$this->userid.'}</a:Id>
+						<a:Id>{'.$this->userId.'}</a:Id>
 						<a:LogicalName>systemuser</a:LogicalName>
 						<a:Name i:nil="true" />
 					</b:value>
-				</a:KeyValuePairOfstringanyType-->
+				</a:KeyValuePairOfstringanyType>
 				<a:KeyValuePairOfstringanyType>
 					<b:key>subject</b:key>
 					<b:value i:type="c:string">'.$this->firstName.' '.$this->lastName.'</b:value>
@@ -91,5 +95,10 @@ class CreateLeadRequest extends Request
 		</entity>
 	</Create>
 </s:Body>';
+    }
+
+    public function createResponse(DOMDocument $document)
+    {
+        return new CreateEntityResponse($document);
     }
 }

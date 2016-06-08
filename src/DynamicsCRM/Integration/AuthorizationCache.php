@@ -1,7 +1,8 @@
 <?php
 namespace DynamicsCRM\Integration;
 
-use DynamicsCRM\Auth\Token\AuthenticationToken;
+use DynamicsCRM\Authorization\CrmUser;
+use DynamicsCRM\Authorization\Token\AuthenticationToken;
 
 abstract class AuthorizationCache {
     /**
@@ -13,4 +14,14 @@ abstract class AuthorizationCache {
      * @param AuthenticationToken $token the token to cache
      */
     public abstract function storeAuthorizationToken(AuthenticationToken $token);
+
+    /**
+     * @return CrmUser the identity of the user
+     */
+    public abstract function getUserIdentity();
+
+    /**
+     * @param CrmUser $user the identity of the current user;
+     */
+    public abstract function storeUserIdentity($user);
 }

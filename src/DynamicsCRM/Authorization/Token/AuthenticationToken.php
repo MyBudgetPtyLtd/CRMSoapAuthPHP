@@ -1,5 +1,5 @@
 <?php
-namespace DynamicsCRM\Auth\Token;
+namespace DynamicsCRM\Authorization\Token;
 
 abstract class AuthenticationToken
 {

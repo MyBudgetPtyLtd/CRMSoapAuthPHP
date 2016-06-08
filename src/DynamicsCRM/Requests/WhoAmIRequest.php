@@ -1,6 +1,9 @@
 <?php
 namespace DynamicsCRM\Requests;
 
+use DOMDocument;
+use DynamicsCRM\Response\WhoAmIResponse;
+
 class WhoAmIRequest extends Request
 {
     public function getAction() {
@@ -18,5 +21,10 @@ class WhoAmIRequest extends Request
 		</request>
 	</Execute>
 </s:Body>';
+    }
+
+    public function createResponse(DOMDocument $document)
+    {
+        return new WhoAmIResponse($document);
     }
 }

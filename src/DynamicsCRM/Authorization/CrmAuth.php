@@ -1,7 +1,7 @@
 <?php
-namespace DynamicsCRM\Auth;
+namespace DynamicsCRM\Authorization;
 
-use DynamicsCRM\Auth\Token\AuthenticationToken;
+use DynamicsCRM\Authorization\Token\AuthenticationToken;
 use DynamicsCRM\Http\SoapRequester;
 use Psr\Log\LoggerInterface;
 

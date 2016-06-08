@@ -1,8 +1,8 @@
 <?php
-namespace DynamicsCRM\Auth;
+namespace DynamicsCRM\Authorization;
 
-use DynamicsCRM\Auth\Token\AuthenticationToken;
-use DynamicsCRM\Auth\Token\OnPremisesAuthenticationToken;
+use DynamicsCRM\Authorization\Token\AuthenticationToken;
+use DynamicsCRM\Authorization\Token\OnPremisesAuthenticationToken;
 use DynamicsCRM\Guid;
 
 class CrmOnPremisesAuth extends CrmAuth

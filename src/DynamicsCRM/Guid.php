@@ -1,7 +1,5 @@
 <?php
-
 namespace DynamicsCRM;
-
 
 class Guid
 {

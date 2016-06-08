@@ -3,15 +3,20 @@
 namespace DynamicsCRM;
 
 use DateTime;
-use DynamicsCRM\Auth\CrmAuth;
-use DynamicsCRM\Auth\CrmOnlineAuth;
-use DynamicsCRM\Auth\CrmOnPremisesAuth;
+use DOMDocument;
+use DynamicsCRM\Authorization\CrmAuth;
+use DynamicsCRM\Authorization\CrmOnlineAuth;
+use DynamicsCRM\Authorization\CrmOnPremisesAuth;
+use DynamicsCRM\Authorization\CrmUser;
 use DynamicsCRM\Http\SoapRequester;
 use DynamicsCRM\Integration\AuthorizationCache;
 use DynamicsCRM\Integration\AuthorizationSettingsProvider;
 use DynamicsCRM\Integration\SingleRequestAuthorizationCache;
 use DynamicsCRM\Requests\Request;
+use DynamicsCRM\Requests\RetrieveUserRequest;
 use DynamicsCRM\Requests\WhoAmIRequest;
+use DynamicsCRM\Response\RetrieveUserResponse;
+use DynamicsCRM\Response\WhoAmIResponse;
 use Psr\Log\LoggerInterface;
 
 class DynamicsCRM
@@ -31,7 +36,16 @@ class DynamicsCRM
         $xml .= $request->getRequestXML();
         $xml .= "</s:Envelope>";
 
-        return $this->SoapRequestor->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);
+        $response = $this->SoapRequestor->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);
+        $responseDOM = new DOMDocument();
+        $responseDOM->loadXML($response);
+        return $request->createResponse($responseDOM);
+    }
+
+    public function GetCurrentUserId() {
+        //Verify auth is current.
+        $this->GetAuthorizationToken();
+        return $this->AuthorizationCache->getUserIdentity()->getUserId();
     }
 
     private function GetAuthorizationToken()
@@ -51,8 +65,14 @@ class DynamicsCRM
             $tempCache = new SingleRequestAuthorizationCache();
             $tempCache->storeAuthorizationToken($token);
             $subRequest = new self($this->AuthorizationSettingsProvider, $tempCache, $this->Logger);
-            $subRequest->Request(new WhoAmIRequest());
+            /** @var WhoAmIResponse $whoAmIResponse */
+            $whoAmIResponse = ($subRequest->Request(new WhoAmIRequest()));
+            /** @var RetrieveUserResponse $userResponse */
+            $userResponse = ($subRequest->Request(new RetrieveUserRequest($whoAmIResponse->getUserId())));
 
+            $user = new CrmUser($whoAmIResponse->getUserId(), $userResponse->getFirstName(), $userResponse->getLastName());
+
+            $this->AuthorizationCache->storeUserIdentity($user);
             //Store the authorization token and identity.
             $this->AuthorizationCache->storeAuthorizationToken($token);
         }

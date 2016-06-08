@@ -2,8 +2,6 @@
 namespace DynamicsCRM\Http;
 use DOMDocument;
 use DOMElement;
-use DynamicsCRM\Auth\Token\AuthenticationToken;
-use DynamicsCRM\Requests\Request;
 use Exception;
 use Psr\Log\LoggerInterface;
 
@@ -39,9 +37,7 @@ class SoapRequester
 
     /**
      * @param string $uri
-     * @param Request|string $request
-     *
-     * @param AuthenticationToken $token
+     * @param $xml
      * @return mixed
      * @throws Exception
      */
@@ -62,7 +58,6 @@ class SoapRequester
         $domXml->formatOutput = true;
 
         $domXml->loadXML($xml);
-        $this->logger->debug("Headers :".var_export($headers));
         $this->logger->debug("Request :".$domXml->saveXML());
 
         $responseXml = curl_exec($ch);
@@ -79,12 +74,6 @@ class SoapRequester
         }
         curl_close($ch);
 
-        if ($this->responder) {
-            $this->responder->loadXML($responseXml);
-
-            return $this->responder;
-        }
-
         return $responseXml;
     }
 
@@ -96,11 +85,7 @@ class SoapRequester
      */
     private function getHeaders($uri, $request)
     {
-        var_export($uri);
-
         $urlDetails = parse_url($uri);
-
-        var_export($urlDetails);
 
         return [
             "POST " . $urlDetails['path'] . " HTTP/1.1",

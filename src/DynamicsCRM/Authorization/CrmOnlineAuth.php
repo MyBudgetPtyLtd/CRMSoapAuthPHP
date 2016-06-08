@@ -1,9 +1,8 @@
 <?php
-namespace DynamicsCRM\Auth;
+namespace DynamicsCRM\Authorization;
 
-
-use DynamicsCRM\Auth\Token\AuthenticationToken;
-use DynamicsCRM\Auth\Token\OnlineAuthenticationToken;
+use DynamicsCRM\Authorization\Token\AuthenticationToken;
+use DynamicsCRM\Authorization\Token\OnlineAuthenticationToken;
 use DynamicsCRM\Guid;
 
 class CrmOnlineAuth extends CrmAuth
