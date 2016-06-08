@@ -44,14 +44,14 @@ class CreateLeadRequest extends Request
 						<a:Value>1</a:Value>
 					</b:value>
 				</a:KeyValuePairOfstringanyType>
-				<a:KeyValuePairOfstringanyType>
+				<!--a:KeyValuePairOfstringanyType>
 					<b:key>ownerid</b:key>
 					<b:value i:type="a:EntityReference">
 						<a:Id>{'.$this->userid.'}</a:Id>
 						<a:LogicalName>systemuser</a:LogicalName>
 						<a:Name i:nil="true" />
 					</b:value>
-				</a:KeyValuePairOfstringanyType>
+				</a:KeyValuePairOfstringanyType-->
 				<a:KeyValuePairOfstringanyType>
 					<b:key>subject</b:key>
 					<b:value i:type="c:string">'.$this->firstName.' '.$this->lastName.'</b:value>

@@ -14,7 +14,7 @@ class OnlineAuthenticationToken extends AuthenticationToken {
      */
     function CreateSoapHeader($action) {
         $xml = '
-<s:Header>
+<s:Header xmlns:a="http://www.w3.org/2005/08/addressing">
 	<a:Action s:mustUnderstand="1">http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/'.$action.'</a:Action>
 		<Security xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
 			<EncryptedData Id="Assertion0" Type="http://www.w3.org/2001/04/xmlenc#Element" xmlns="http://www.w3.org/2001/04/xmlenc#">

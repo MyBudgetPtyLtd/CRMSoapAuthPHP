@@ -24,7 +24,7 @@ class ConfigFileSettingsProvider extends AuthorizationSettingsProvider {
 
         $this->Username = $CRMUsername;
         $this->Password = $CRMPassword;
-        $this->Uri = $CRMUri;
+        $this->Uri = $CRMUri.(substr ( $CRMUri, - 1 ) == '/' ? '' : '/');
 
     }
 

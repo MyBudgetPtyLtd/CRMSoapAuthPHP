@@ -14,9 +14,11 @@ class CrmOnlineAuth extends CrmAuth
      * @return AuthenticationToken An object containing the SOAP header and expiration date/time of the header.
      */
     public function Authenticate() {
-        $url = (substr ( $this->Url, - 1 ) == '/' ? '' : '/');
+        $url = $this->url.(substr ( $this->url, - 1 ) == '/' ? '' : '/');
         $urnAddress = $this->GetUrnOnline ( $url );
-        $now = $_SERVER ['REQUEST_TIME'];
+        $now = $_SERVER['REQUEST_TIME'];
+
+        $this->logger->info("Authenticating with https://login.microsoftonline.com/RST2.srf for ".$url);
 
         $xml = '
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing" xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
@@ -33,8 +35,8 @@ class CrmOnlineAuth extends CrmAuth
 				<u:Expires>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . '</u:Expires>
 			</u:Timestamp>
 			<o:UsernameToken u:Id="uuid-' . Guid::newGuid() . '-1">
-				<o:Username>' . $this->Username . '</o:Username>
-				<o:Password>' . $this->Password . '</o:Password>
+				<o:Username>' . $this->username . '</o:Username>
+				<o:Password>' . $this->password . '</o:Password>
 			</o:UsernameToken>
 		</o:Security>
 	</s:Header>
@@ -51,26 +53,7 @@ class CrmOnlineAuth extends CrmAuth
 </s:Envelope>
 		';
 
-        $headers = array (
-            "POST " . "/RST2.srf" . " HTTP/1.1",
-            "Host: " . "login.microsoftonline.com",
-            'Connection: Keep-Alive',
-            "Content-type: application/soap+xml; charset=UTF-8",
-            "Content-length: " . strlen ( $xml )
-        );
-
-        $ch = curl_init ();
-        curl_setopt ( $ch, CURLOPT_URL, "https://login.microsoftonline.com/RST2.srf" );
-        curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
-        curl_setopt ( $ch, CURLOPT_TIMEOUT, 60 );
-        curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false );
-        curl_setopt ( $ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1 );
-        curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
-        curl_setopt ( $ch, CURLOPT_POST, 1 );
-        curl_setopt ( $ch, CURLOPT_POSTFIELDS, $xml );
-
-        $response = curl_exec ( $ch );
-        curl_close ( $ch );
+        $response = $this->soapRequester->sendRequest("https://login.microsoftonline.com/RST2.srf", $xml);
 
         $responseDom = new \DomDocument ();
         $responseDom->loadXML ( $response );

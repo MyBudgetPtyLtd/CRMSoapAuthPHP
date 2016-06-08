@@ -13,7 +13,7 @@ class OnPremisesAuthenticationToken extends AuthenticationToken {
     public function CreateSoapHeader($action)
     {
         $xml = '
-<s:Header>
+<s:Header xmlns:a="http://www.w3.org/2005/08/addressing">
 	<a:Action s:mustUnderstand="1">http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/Execute</a:Action>
 	<a:MessageID>urn:uuid:' . Guid::newGuid() . '</a:MessageID>
 	<a:ReplyTo>

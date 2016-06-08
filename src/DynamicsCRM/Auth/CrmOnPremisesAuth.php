@@ -13,11 +13,14 @@ class CrmOnPremisesAuth extends CrmAuth
      * @return AuthenticationToken An object containing the SOAP header and expiration date/time of the header.
      */
     function Authenticate() {
-        $url = (substr ( $this->Url, - 1 ) == '/' ? '' : '/');
+
+        $url = $this->url.(substr ( $this->url, - 1 ) == '/' ? '' : '/');
         $adfsUrl = $this->GetADFS ( $url );
         $now = $_SERVER ['REQUEST_TIME'];
         $urnAddress = $url . "XRMServices/2011/Organization.svc";
         $usernamemixed = $adfsUrl . "/13/usernamemixed";
+
+        $this->logger("Authenticating with $adfsUrl for".$url);
 
         $xml = '
 <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing">
@@ -33,8 +36,8 @@ class CrmOnPremisesAuth extends CrmAuth
 				<u:Expires>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . '</u:Expires>
 			</u:Timestamp>
 			<UsernameToken u:Id="' . Guid::newGuid() . '">
-				<Username>' . $this->Username . '</Username>
-				<Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">' . $this->Password . '</Password>
+				<Username>' . $this->username . '</Username>
+				<Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">' . $this->password . '</Password>
 			</UsernameToken>
 		</Security>
 		<a:To s:mustUnderstand="1">' . $usernamemixed . '</a:To>
@@ -51,27 +54,8 @@ class CrmOnPremisesAuth extends CrmAuth
 	</s:Body>
 </s:Envelope>
 		';
-
-        $headers = array (
-            "POST " . parse_url ( $usernamemixed, PHP_URL_PATH ) . " HTTP/1.1",
-            "Host: " . parse_url ( $adfsUrl, PHP_URL_HOST ),
-            'Connection: Keep-Alive',
-            "Content-type: application/soap+xml; charset=UTF-8",
-            "Content-length: " . strlen ( $xml )
-        );
-
-        $ch = curl_init ();
-        curl_setopt ( $ch, CURLOPT_URL, $usernamemixed );
-        curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
-        curl_setopt ( $ch, CURLOPT_TIMEOUT, 60 );
-        curl_setopt ( $ch, CURLOPT_SSL_VERIFYPEER, false );
-        curl_setopt ( $ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1 );
-        curl_setopt ( $ch, CURLOPT_HTTPHEADER, $headers );
-        curl_setopt ( $ch, CURLOPT_POST, 1 );
-        curl_setopt ( $ch, CURLOPT_POSTFIELDS, $xml );
-
-        $response = curl_exec ( $ch );
-        curl_close ( $ch );
+        
+        $response = $this->soapRequester->sendRequest($usernamemixed, $xml);
 
         $responseDom = new \DomDocument ();
         $responseDom->loadXML ( $response );

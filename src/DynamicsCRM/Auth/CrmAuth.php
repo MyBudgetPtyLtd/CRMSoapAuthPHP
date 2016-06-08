@@ -2,43 +2,39 @@
 namespace DynamicsCRM\Auth;
 
 use DynamicsCRM\Auth\Token\AuthenticationToken;
+use DynamicsCRM\Http\SoapRequester;
+use Psr\Log\LoggerInterface;
 
 abstract class CrmAuth {
 
-    protected $Url;
-    protected $Username;
-    protected $Password;
-
+    protected $url;
+    protected $username;
+    protected $password;
     /**
-    * @param String $username
-    *        	Username of a valid CRM user.
-    * @param String $password
-    *        	Password of a valid CRM user.
-    * @param String $url
-    *        	The Url of the CRM Online organization (https://org.crm.dynamics.com).
-    */
-    function __construct($url, $username, $password) {
-        $this->Url = $url;
-        $this->Username = $username;
-        $this->Password = $password;
-    }
-
-    /**
-     * Creates a CrmAuth appropriate for the URL given.
-     * @return CrmAuth a CrmAuth you can use to authenticate with.
-     * @param String $username
-     *        	Username of a valid CRM user.
-     * @param String $password
-     *        	Password of a valid CRM user.
-     * @param String $url
-     *        	The Url of the CRM Online organization (https://org.crm.dynamics.com).
+     * @var LoggerInterface
      */
-    public static function Create($url, $username, $password) {
-        if (strpos ( strtoupper ( $url ), ".DYNAMICS.COM" )) {
-            return new CrmOnlineAuth($url, $username, $password);
-        } else {
-            return new CrmOnPremisesAuth($url, $username, $password);
-        }
+    protected $logger;
+    /**
+     * @var SoapRequester
+     */
+    protected $soapRequester;
+
+    /**
+     * @param String $url
+     *            The Url of the CRM Online organization (https://org.crm.dynamics.com).
+     * @param String $username
+     *            Username of a valid CRM user.
+     * @param String $password
+     *            Password of a valid CRM user.
+     * @param LoggerInterface $logger
+     */
+    function __construct($url, $username, $password, SoapRequester $soapRequester, LoggerInterface $logger) {
+        $this->url = $url;
+        $logger->info("wtf? ".$this->url);
+        $this->username = $username;
+        $this->password = $password;
+        $this->logger = $logger;
+        $this->soapRequester = $soapRequester;
     }
 
     /**
