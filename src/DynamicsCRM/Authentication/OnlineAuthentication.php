@@ -1,10 +1,8 @@
 <?php
 namespace DynamicsCRM\Authentication;
 
-use DOMDocument;
 use DynamicsCRM\Authentication\Token\AuthenticationToken;
 use DynamicsCRM\Authentication\Token\OnlineAuthenticationToken;
-use DynamicsCRM\Guid;
 
 class OnlineAuthentication extends Authenticator
 {

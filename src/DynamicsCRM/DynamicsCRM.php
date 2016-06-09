@@ -25,16 +25,22 @@ use Twig_Loader_Filesystem;
 
 class DynamicsCRM
 {
+    private $authenticationSettingsProvider;
+    private $authenticationCache;
+    private $logger;
+    private $soapRequester;
+    private $twig;
+
     public function __construct(DynamicsCRMSettingsProvider $authenticationSettingsProvider, AuthenticationCache $authenticationCache, LoggerInterface $logger) {
-        $this->AuthenticationSettingsProvider = $authenticationSettingsProvider;
-        $this->AuthenticationCache = $authenticationCache;
-        $this->Logger = $logger;
-        $this->SoapRequestor = new SoapRequester($logger);
+        $this->authenticationSettingsProvider = $authenticationSettingsProvider;
+        $this->authenticationCache = $authenticationCache;
+        $this->logger = $logger;
+        $this->soapRequester = new SoapRequester($logger);
 
         $loader = new Twig_Loader_Filesystem();
         $loader->addPath(__dir__.'/Requests/Template', 'Request');
         $loader->addPath(__dir__.'/Authentication/Template', 'Authentication');
-        $this->twig = new Twig_Environment($loader, array("debug"=>true));
+        $this->twig = new Twig_Environment($loader, array());
     }
 
     public function Request(Request $request) {
@@ -49,7 +55,7 @@ class DynamicsCRM
         //$xml .= $request->getRequestXML();
         $xml .= "</s:Envelope>";
 
-        $responseDOM = $this->SoapRequestor->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);
+        $responseDOM = $this->soapRequester->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);
         $response = $request->createResponse($responseDOM);
         return $response;
     }
@@ -57,7 +63,7 @@ class DynamicsCRM
     public function GetCurrentUserId() {
         //Verify auth is current.
         $this->GetAuthenticationToken();
-        $crmUser = $this->AuthenticationCache->getUserIdentity();
+        $crmUser = $this->authenticationCache->getUserIdentity();
         if ($crmUser) {
             return $crmUser->getUserId();
         } else {
@@ -67,21 +73,21 @@ class DynamicsCRM
 
     private function GetAuthenticationToken()
     {
-        $token = $this->AuthenticationCache->getAuthenticationToken();
+        $token = $this->authenticationCache->getAuthenticationToken();
         $now = $_SERVER['REQUEST_TIME'];
 
         if ($token == null || (new DateTime($token->Expires))->getTimestamp() < $now ) {
             $crmAuth = $this->CreateCrmAuth(
-                $this->AuthenticationSettingsProvider->getCRMUri(),
-                $this->AuthenticationSettingsProvider->getUsername(),
-                $this->AuthenticationSettingsProvider->getPassword()
+                $this->authenticationSettingsProvider->getCRMUri(),
+                $this->authenticationSettingsProvider->getUsername(),
+                $this->authenticationSettingsProvider->getPassword()
             );
             $token = $crmAuth->Authenticate();
 
             //Hits up CRM with a WhoAmI to get the user's ID and name
             $tempCache = new SingleRequestAuthenticationCache();
             $tempCache->storeAuthenticationToken($token);
-            $subRequest = new self($this->AuthenticationSettingsProvider, $tempCache, $this->Logger);
+            $subRequest = new self($this->authenticationSettingsProvider, $tempCache, $this->logger);
             /** @var WhoAmIResponse $whoAmIResponse */
             $whoAmIResponse = ($subRequest->Request(new WhoAmIRequest()));
             var_dump($whoAmIResponse);
@@ -92,9 +98,9 @@ class DynamicsCRM
 
             $user = new CrmUser($whoAmIResponse->getUserId(), $userResponse->getFirstName(), $userResponse->getLastName());
             var_export($user);
-            $this->AuthenticationCache->storeUserIdentity($user);
+            $this->authenticationCache->storeUserIdentity($user);
             //Store the authentication token and identity.
-            $this->AuthenticationCache->storeAuthenticationToken($token);
+            $this->authenticationCache->storeAuthenticationToken($token);
         }
         return $token;
     }
@@ -111,9 +117,9 @@ class DynamicsCRM
      */
     private function CreateCrmAuth($url, $username, $password) {
         if (strpos ( strtoupper ( $url ), ".DYNAMICS.COM" )) {
-            return new OnlineAuthentication($url, $username, $password, $this->SoapRequestor, $this->twig, $this->Logger);
+            return new OnlineAuthentication($url, $username, $password, $this->soapRequester, $this->twig, $this->logger);
         } else {
-            return new OnPremisesAuthentication($url, $username, $password, $this->SoapRequestor, $this->twig, $this->Logger);
+            return new OnPremisesAuthentication($url, $username, $password, $this->soapRequester, $this->twig, $this->logger);
         }
     }
 

@@ -6,7 +6,6 @@ class ConfigFileSettingsProvider extends DynamicsCRMSettingsProvider {
     private $username;
     private $password;
     private $uri;
-    private $templateCachePath;
 
     public function __construct($settingsFile)
     {
@@ -41,10 +40,5 @@ class ConfigFileSettingsProvider extends DynamicsCRMSettingsProvider {
     public function getPassword()
     {
         return $this->password;
-    }
-
-    public function getTemplateCachePath()
-    {
-        return $this->templateCachePath;
     }
 }
