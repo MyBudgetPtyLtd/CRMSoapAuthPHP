@@ -4,84 +4,104 @@ namespace DynamicsCRM;
 
 use DateTime;
 use DOMDocument;
-use DynamicsCRM\Authorization\CrmAuth;
-use DynamicsCRM\Authorization\CrmOnlineAuth;
-use DynamicsCRM\Authorization\CrmOnPremisesAuth;
-use DynamicsCRM\Authorization\CrmUser;
+use DynamicsCRM\Authentication\Authenticator;
+use DynamicsCRM\Authentication\OnlineAuthentication;
+use DynamicsCRM\Authentication\OnPremisesAuthentication;
+use DynamicsCRM\Authentication\CrmUser;
+use DynamicsCRM\Authentication\Token\AuthenticationToken;
 use DynamicsCRM\Http\SoapRequester;
-use DynamicsCRM\Integration\AuthorizationCache;
-use DynamicsCRM\Integration\AuthorizationSettingsProvider;
-use DynamicsCRM\Integration\SingleRequestAuthorizationCache;
+use DynamicsCRM\Integration\AuthenticationCache;
+use DynamicsCRM\Integration\DynamicsCRMSettingsProvider;
+use DynamicsCRM\Integration\SingleRequestAuthenticationCache;
 use DynamicsCRM\Requests\Request;
 use DynamicsCRM\Requests\RetrieveUserRequest;
 use DynamicsCRM\Requests\WhoAmIRequest;
 use DynamicsCRM\Response\RetrieveUserResponse;
 use DynamicsCRM\Response\WhoAmIResponse;
 use Psr\Log\LoggerInterface;
+use Twig_Environment;
+use Twig_Loader_Filesystem;
+
 
 class DynamicsCRM
 {
-    public function __construct(AuthorizationSettingsProvider $authorizationSettingsProvider, AuthorizationCache $authorizationCache, LoggerInterface $logger) {
-        $this->AuthorizationSettingsProvider = $authorizationSettingsProvider;
-        $this->AuthorizationCache = $authorizationCache;
+    public function __construct(DynamicsCRMSettingsProvider $authenticationSettingsProvider, AuthenticationCache $authenticationCache, LoggerInterface $logger) {
+        $this->AuthenticationSettingsProvider = $authenticationSettingsProvider;
+        $this->AuthenticationCache = $authenticationCache;
         $this->Logger = $logger;
         $this->SoapRequestor = new SoapRequester($logger);
+
+        $loader = new Twig_Loader_Filesystem();
+        $loader->addPath(__dir__.'/Requests/Template', 'Request');
+        $loader->addPath(__dir__.'/Authentication/Template', 'Authentication');
+        $this->twig = new Twig_Environment($loader, array("debug"=>true));
     }
 
     public function Request(Request $request) {
-        $token = $this->GetAuthorizationToken();
+        $token = $this->GetAuthenticationToken();
         
         $xml = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\">";
-        $xml .= $token->CreateSoapHeader($request->getAction());
-        $xml .= $request->getRequestXML();
+        //$xml .= $token->CreateSoapHeader($request->getAction());
+        $xml .= $this->getHeaderForRequest($request, $token);
+
+        $xml .= $this->getBodyForRequest($request);
+
+        //$xml .= $request->getRequestXML();
         $xml .= "</s:Envelope>";
 
-        $response = $this->SoapRequestor->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);
-        $responseDOM = new DOMDocument();
-        $responseDOM->loadXML($response);
-        return $request->createResponse($responseDOM);
+        $responseDOM = $this->SoapRequestor->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);
+        $response = $request->createResponse($responseDOM);
+        return $response;
     }
 
     public function GetCurrentUserId() {
         //Verify auth is current.
-        $this->GetAuthorizationToken();
-        return $this->AuthorizationCache->getUserIdentity()->getUserId();
+        $this->GetAuthenticationToken();
+        $crmUser = $this->AuthenticationCache->getUserIdentity();
+        if ($crmUser) {
+            return $crmUser->getUserId();
+        } else {
+            return Guid::zero();
+        }
     }
 
-    private function GetAuthorizationToken()
+    private function GetAuthenticationToken()
     {
-        $token = $this->AuthorizationCache->getAuthorizationToken();
+        $token = $this->AuthenticationCache->getAuthenticationToken();
         $now = $_SERVER['REQUEST_TIME'];
 
         if ($token == null || (new DateTime($token->Expires))->getTimestamp() < $now ) {
             $crmAuth = $this->CreateCrmAuth(
-                $this->AuthorizationSettingsProvider->getCRMUri(),
-                $this->AuthorizationSettingsProvider->getUsername(),
-                $this->AuthorizationSettingsProvider->getPassword()
+                $this->AuthenticationSettingsProvider->getCRMUri(),
+                $this->AuthenticationSettingsProvider->getUsername(),
+                $this->AuthenticationSettingsProvider->getPassword()
             );
             $token = $crmAuth->Authenticate();
 
             //Hits up CRM with a WhoAmI to get the user's ID and name
-            $tempCache = new SingleRequestAuthorizationCache();
-            $tempCache->storeAuthorizationToken($token);
-            $subRequest = new self($this->AuthorizationSettingsProvider, $tempCache, $this->Logger);
+            $tempCache = new SingleRequestAuthenticationCache();
+            $tempCache->storeAuthenticationToken($token);
+            $subRequest = new self($this->AuthenticationSettingsProvider, $tempCache, $this->Logger);
             /** @var WhoAmIResponse $whoAmIResponse */
             $whoAmIResponse = ($subRequest->Request(new WhoAmIRequest()));
+            var_dump($whoAmIResponse);
             /** @var RetrieveUserResponse $userResponse */
-            $userResponse = ($subRequest->Request(new RetrieveUserRequest($whoAmIResponse->getUserId())));
+            $request = new RetrieveUserRequest($whoAmIResponse->getUserId());
+            var_dump($request);
+            $userResponse = ($subRequest->Request($request));
 
             $user = new CrmUser($whoAmIResponse->getUserId(), $userResponse->getFirstName(), $userResponse->getLastName());
-
-            $this->AuthorizationCache->storeUserIdentity($user);
-            //Store the authorization token and identity.
-            $this->AuthorizationCache->storeAuthorizationToken($token);
+            var_export($user);
+            $this->AuthenticationCache->storeUserIdentity($user);
+            //Store the authentication token and identity.
+            $this->AuthenticationCache->storeAuthenticationToken($token);
         }
         return $token;
     }
 
     /**
      * Creates a CrmAuth appropriate for the URL given.
-     * @return CrmAuth a CrmAuth you can use to authenticate with.
+     * @return Authenticator a CrmAuth you can use to authenticate with.
      * @param String $username
      *        	Username of a valid CRM user.
      * @param String $password
@@ -89,13 +109,36 @@ class DynamicsCRM
      * @param String $url
      *        	The Url of the CRM Online organization (https://org.crm.dynamics.com).
      */
-    //TODO: Factory Class
-    public function CreateCrmAuth($url, $username, $password) {
+    private function CreateCrmAuth($url, $username, $password) {
         if (strpos ( strtoupper ( $url ), ".DYNAMICS.COM" )) {
-            return new CrmOnlineAuth($url, $username, $password, $this->SoapRequestor, $this->Logger);
+            return new OnlineAuthentication($url, $username, $password, $this->SoapRequestor, $this->twig, $this->Logger);
         } else {
-            return new CrmOnPremisesAuth($url, $username, $password, $this->SoapRequestor, $this->Logger);
+            return new OnPremisesAuthentication($url, $username, $password, $this->SoapRequestor, $this->twig, $this->Logger);
         }
+    }
+
+    private function getHeaderForRequest(Request $request, AuthenticationToken $token) {
+        $templateContext = [
+            "action" => $request->getAction(),
+            "token" => $token
+        ];
+        $tokenTemplateFilename = join('', array_slice(explode('\\', get_class($token)), -1));
+        $template = $this->twig->loadTemplate("@Authentication/$tokenTemplateFilename.xml");
+        return $template->render($templateContext);
+    }
+
+    /**
+     * @param Request $request
+     * @return string
+     */
+    private function getBodyForRequest(Request $request)
+    {
+        $templateContext = [
+            "userId" => $this->GetCurrentUserId(),
+            "request" => $request
+        ];
+        $template = $this->twig->loadTemplate("@Request/".$request->getRequestTemplateFilename().".xml");
+        return $template->render($templateContext);
     }
 
 

@@ -16,6 +16,10 @@ class Guid
                 substr ( $charId, 0, 8 ) . $hyphen . substr ( $charId, 8, 4 ) . $hyphen . substr ( $charId, 12, 4 ) . $hyphen . substr ( $charId, 16, 4 ) . $hyphen . substr ( $charId, 20, 12 ) .
                 chr ( 125 ); // "}"
             return $uuid;
-            }
+        }
+    }
+
+    public static function zero() {
+        return '00000000-0000-0000-0000-000000000000';
     }
 }

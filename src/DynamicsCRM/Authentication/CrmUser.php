@@ -1,5 +1,5 @@
 <?php
-namespace DynamicsCRM\Authorization;
+namespace DynamicsCRM\Authentication;
 
 class CrmUser
 {

@@ -38,7 +38,7 @@ class SoapRequester
     /**
      * @param string $uri
      * @param $xml
-     * @return mixed
+     * @return DOMDocument
      * @throws Exception
      */
     public function sendRequest($uri, $xml)
@@ -67,14 +67,18 @@ class SoapRequester
             $this->logger->debug("Response :".$domXml->saveXML());
         }
 
+        $this->testCurlResponse($ch, $responseXml);
+        $responseDOM = new DOMDocument();
+        $responseDOM->loadXML($responseXml);
+
         try {
-            $this->hasError($ch, $responseXml);
+            $this->hasError($responseDOM, $responseXml);
         } catch (\Exception $ex) {
             throw $ex;
         }
         curl_close($ch);
-
-        return $responseXml;
+        
+        return $responseDOM;
     }
 
     /**
@@ -119,19 +123,14 @@ class SoapRequester
     }
 
     /**
-     * @param resource $ch
-     * @param string   $responseXML
+     * @param DOMDocument $responseDOM
+     * @param mixed $responseXML
      *
      * @throws Exception
      */
-    private function hasError($ch, $responseXML)
+    private function hasError(DOMDocument $responseDOM, $responseXML)
     {
-        $this->testCurlResponse($ch, $responseXML);
-
         if ($responseXML) {
-            $responseDOM = new \DOMDocument();
-            $responseDOM->loadXML($responseXML);
-
             $this->testIsValidSoapResponse($responseDOM, $responseXML);
             $this->testIsValidSoapHeader($responseDOM, $responseXML);
             $this->testActionIsNotError($responseDOM);
@@ -210,20 +209,14 @@ class SoapRequester
         $header = $this->getHeader($envelope);
 
         if (!$header) {
-            $domXml = new DOMDocument('1.0');
-            $domXml->preserveWhiteSpace = false;
-            $domXml->formatOutput = true;
-            $domXml->loadXML($responseXML);
-            $xml = $domXml->saveXML();
-            echo $xml."\n";
-            throw new Exception('Invalid SOAP Response: No SOAP Header!' . PHP_EOL . $xml . PHP_EOL);
+            throw new Exception('Invalid SOAP Response: No SOAP Header!' . PHP_EOL . $responseXML . PHP_EOL);
         }
     }
 
     /**
      * @param DOMDocument $responseDOM
      *
-     * @throws \Exception
+     * @throws Exception
      */
     private function testActionIsNotError(DOMDocument $responseDOM)
     {
@@ -239,7 +232,7 @@ class SoapRequester
     /**
      * @param DOMDocument $responseDOM
      *
-     * @return \Exception
+     * @return Exception
      */
     private function getSoapFault(DOMDocument $responseDOM)
     {

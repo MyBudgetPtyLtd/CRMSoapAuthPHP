@@ -1,5 +1,5 @@
 <?php
-namespace DynamicsCRM\Authorization\Token;
+namespace DynamicsCRM\Authentication\Token;
 
 abstract class AuthenticationToken
 {
@@ -8,6 +8,4 @@ abstract class AuthenticationToken
     public $Token2;
     public $KeyIdentifier;
     public $Url;
-
-    public abstract function CreateSoapHeader($action);
 }

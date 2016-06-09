@@ -1,11 +1,12 @@
 <?php
 namespace DynamicsCRM\Integration;
 
-class ConfigFileSettingsProvider extends AuthorizationSettingsProvider {
+class ConfigFileSettingsProvider extends DynamicsCRMSettingsProvider {
 
-    private $Username;
-    private $Password;
-    private $Uri;
+    private $username;
+    private $password;
+    private $uri;
+    private $templateCachePath;
 
     public function __construct($settingsFile)
     {
@@ -22,24 +23,28 @@ class ConfigFileSettingsProvider extends AuthorizationSettingsProvider {
             throw new \Exception("CRMUri is not defined in $settingsFile");
         }
 
-        $this->Username = $CRMUsername;
-        $this->Password = $CRMPassword;
-        $this->Uri = $CRMUri.(substr ( $CRMUri, - 1 ) == '/' ? '' : '/');
-
+        $this->username = $CRMUsername;
+        $this->password = $CRMPassword;
+        $this->uri = $CRMUri.(substr ( $CRMUri, - 1 ) == '/' ? '' : '/');
     }
 
     public function getCRMUri()
     {
-        return $this->Uri;
+        return $this->uri;
     }
 
     public function getUsername()
     {
-        return $this->Username;
+        return $this->username;
     }
 
     public function getPassword()
     {
-        return $this->Password;
+        return $this->password;
+    }
+
+    public function getTemplateCachePath()
+    {
+        return $this->templateCachePath;
     }
 }

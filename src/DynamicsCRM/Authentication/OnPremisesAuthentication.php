@@ -1,11 +1,10 @@
 <?php
-namespace DynamicsCRM\Authorization;
+namespace DynamicsCRM\Authentication;
 
-use DynamicsCRM\Authorization\Token\AuthenticationToken;
-use DynamicsCRM\Authorization\Token\OnPremisesAuthenticationToken;
-use DynamicsCRM\Guid;
+use DynamicsCRM\Authentication\Token\AuthenticationToken;
+use DynamicsCRM\Authentication\Token\OnPremisesAuthenticationToken;
 
-class CrmOnPremisesAuth extends CrmAuth
+class OnPremisesAuthentication extends Authenticator
 {
     /**
      * Gets a CRM On Premise SOAP header & expiration.
@@ -14,51 +13,16 @@ class CrmOnPremisesAuth extends CrmAuth
      */
     function Authenticate() {
 
-        $url = $this->url.(substr ( $this->url, - 1 ) == '/' ? '' : '/');
+        $url = $this->url;
         $adfsUrl = $this->GetADFS ( $url );
         $now = $_SERVER ['REQUEST_TIME'];
-        $urnAddress = $url . "XRMServices/2011/Organization.svc";
+
         $usernamemixed = $adfsUrl . "/13/usernamemixed";
 
         $this->logger("Authenticating with $adfsUrl for".$url);
+        $xml = $this->getAuthenticationRequest();
 
-        $xml = '
-<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="http://www.w3.org/2005/08/addressing">
-	<s:Header>
-		<a:Action s:mustUnderstand="1">http://docs.oasis-open.org/ws-sx/ws-trust/200512/RST/Issue</a:Action>
-		<a:MessageID>urn:uuid:' . Guid::newGuid() . '</a:MessageID>
-		<a:ReplyTo>
-			<a:Address>http://www.w3.org/2005/08/addressing/anonymous</a:Address>
-		</a:ReplyTo>
-		<Security s:mustUnderstand="1" xmlns:u="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
-			<u:Timestamp  u:Id="' . Guid::newGuid() . '">
-				<u:Created>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', $now ) . '</u:Created>
-				<u:Expires>' . gmdate ( 'Y-m-d\TH:i:s.u\Z', strtotime ( '+60 minute', $now ) ) . '</u:Expires>
-			</u:Timestamp>
-			<UsernameToken u:Id="' . Guid::newGuid() . '">
-				<Username>' . $this->username . '</Username>
-				<Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">' . $this->password . '</Password>
-			</UsernameToken>
-		</Security>
-		<a:To s:mustUnderstand="1">' . $usernamemixed . '</a:To>
-	</s:Header>
-	<s:Body>
-		<trust:RequestSecurityToken xmlns:trust="http://docs.oasis-open.org/ws-sx/ws-trust/200512">
-			<wsp:AppliesTo xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy">
-				<a:EndpointReference>
-					<a:Address>' . $urnAddress . '</a:Address>
-				</a:EndpointReference>
-			</wsp:AppliesTo>
-			<trust:RequestType>http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue</trust:RequestType>
-		</trust:RequestSecurityToken>
-	</s:Body>
-</s:Envelope>
-		';
-        
-        $response = $this->soapRequester->sendRequest($usernamemixed, $xml);
-
-        $responseDom = new \DomDocument ();
-        $responseDom->loadXML ( $response );
+        $responseDom = $this->soapRequester->sendRequest($usernamemixed, $xml);
 
         $cipherValues = $responseDom->getElementsByTagName ( "CipherValue" );
         $token1 = $cipherValues->item ( 0 )->textContent;
@@ -152,5 +116,10 @@ class CrmOnPremisesAuth extends CrmAuth
         $identifier = $identifiers->item ( 0 )->textContent;
 
         return str_replace ( "http://", "https://", $identifier );
+    }
+
+    protected function getUrnAddress()
+    {
+        return $this->url."XRMServices/2011/Organization.svc";
     }
 }

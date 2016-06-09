@@ -2,7 +2,7 @@
 
 use DynamicsCRM\DynamicsCRM;
 use DynamicsCRM\Integration\ConfigFileSettingsProvider;
-use DynamicsCRM\Integration\SingleRequestAuthorizationCache;
+use DynamicsCRM\Integration\SingleRequestAuthenticationCache;
 use DynamicsCRM\Requests\CreateLeadRequest;
 use DynamicsCRM\Response\CreateEntityResponse;
 use Monolog\Logger;
@@ -12,15 +12,15 @@ include __DIR__.'/vendor/autoload.php';
 
 // create a log channel
 $log = new Logger('name');
-$handler = new StreamHandler(__DIR__ . '\example.log', Logger::WARNING);
+$handler = new StreamHandler(__DIR__ . '\example.log', Logger::DEBUG);
 $formatter = new \Monolog\Formatter\LineFormatter();
 $formatter->allowInlineLineBreaks(true);
 $handler->setFormatter($formatter);
 $log->pushHandler($handler);
 
-$authorizationSettingsProvider = new ConfigFileSettingsProvider(__DIR__ . '/config.php');
+$authenticationSettingsProvider = new ConfigFileSettingsProvider(__DIR__ . '/config.php');
 
-$crmExecuteSoap = new DynamicsCRM($authorizationSettingsProvider, new SingleRequestAuthorizationCache(), $log);
+$crmExecuteSoap = new DynamicsCRM($authenticationSettingsProvider, new SingleRequestAuthenticationCache(), $log);
 
 $request = (new CreateLeadRequest())
     ->setUserId($crmExecuteSoap->GetCurrentUserId())
