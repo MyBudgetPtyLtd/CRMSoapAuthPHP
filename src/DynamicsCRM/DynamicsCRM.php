@@ -31,7 +31,7 @@ class DynamicsCRM
     private $soapRequester;
     private $twig;
 
-    public function __construct(DynamicsCRMSettingsProvider $authenticationSettingsProvider, AuthenticationCache $authenticationCache, LoggerInterface $logger) {
+    public function __construct(DynamicsCRMSettingsProvider $authenticationSettingsProvider, AuthenticationCache $authenticationCache, LoggerInterface $logger, $additionalRequestTemplateDirs) {
         $this->authenticationSettingsProvider = $authenticationSettingsProvider;
         $this->authenticationCache = $authenticationCache;
         $this->logger = $logger;
@@ -40,6 +40,11 @@ class DynamicsCRM
         $loader = new Twig_Loader_Filesystem();
         $loader->addPath(__dir__.'/Requests/Template', 'Request');
         $loader->addPath(__dir__.'/Authentication/Template', 'Authentication');
+
+        foreach ($additionalRequestTemplateDirs as $dir) {
+            $loader->addPath($dir, 'Request');
+        }
+
         $this->twig = new Twig_Environment($loader, array());
     }
 
