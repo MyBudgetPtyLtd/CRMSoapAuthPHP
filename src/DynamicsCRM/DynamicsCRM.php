@@ -18,6 +18,7 @@ use DynamicsCRM\Requests\RetrieveUserRequest;
 use DynamicsCRM\Requests\WhoAmIRequest;
 use DynamicsCRM\Response\RetrieveUserResponse;
 use DynamicsCRM\Response\WhoAmIResponse;
+use Exception;
 use Psr\Log\LoggerInterface;
 use Twig_Environment;
 use Twig_Loader_Filesystem;
@@ -31,7 +32,7 @@ class DynamicsCRM
     private $soapRequester;
     private $twig;
 
-    public function __construct(DynamicsCRMSettingsProvider $authenticationSettingsProvider, AuthenticationCache $authenticationCache, LoggerInterface $logger, $additionalRequestTemplateDirs) {
+    public function __construct(DynamicsCRMSettingsProvider $authenticationSettingsProvider, AuthenticationCache $authenticationCache, LoggerInterface $logger, $additionalRequestTemplateDirs = null) {
         $this->authenticationSettingsProvider = $authenticationSettingsProvider;
         $this->authenticationCache = $authenticationCache;
         $this->logger = $logger;
@@ -41,8 +42,10 @@ class DynamicsCRM
         $loader->addPath(__dir__.'/Requests/Template', 'Request');
         $loader->addPath(__dir__.'/Authentication/Template', 'Authentication');
 
-        foreach ($additionalRequestTemplateDirs as $dir) {
-            $loader->addPath($dir, 'Request');
+        if (!empty($additionalRequestTemplateDirs)) {
+            foreach ($additionalRequestTemplateDirs as $dir) {
+                $loader->addPath($dir, 'Request');
+            }
         }
 
         $this->twig = new Twig_Environment($loader, array());
@@ -82,11 +85,22 @@ class DynamicsCRM
         $now = $_SERVER['REQUEST_TIME'];
 
         if ($token == null || (new DateTime($token->Expires))->getTimestamp() < $now ) {
-            $crmAuth = $this->CreateCrmAuth(
-                $this->authenticationSettingsProvider->getCRMUri(),
-                $this->authenticationSettingsProvider->getUsername(),
-                $this->authenticationSettingsProvider->getPassword()
-            );
+            $uri = $this->authenticationSettingsProvider->getCRMUri();
+            $username = $this->authenticationSettingsProvider->getUsername();
+            $password = $this->authenticationSettingsProvider->getPassword();
+
+            if (empty($uri)) {
+                throw new Exception("CRM URI has not been configured");
+            }
+            if (empty($username)) {
+                throw new Exception("CRM Username has not been configured");
+            }
+            if (empty($password)) {
+                throw new Exception("CRM Password has not been configured");
+            }
+
+
+            $crmAuth = $this->CreateCrmAuth($uri, $username, $password);
             $token = $crmAuth->Authenticate();
 
             //Hits up CRM with a WhoAmI to get the user's ID and name
