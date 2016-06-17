@@ -55,12 +55,8 @@ class DynamicsCRM
         $token = $this->GetAuthenticationToken();
         
         $xml = "<s:Envelope xmlns:s=\"http://www.w3.org/2003/05/soap-envelope\">";
-        //$xml .= $token->CreateSoapHeader($request->getAction());
         $xml .= $this->getHeaderForRequest($request, $token);
-
         $xml .= $this->getBodyForRequest($request);
-
-        //$xml .= $request->getRequestXML();
         $xml .= "</s:Envelope>";
 
         $responseDOM = $this->soapRequester->sendRequest($token->Url."XRMServices/2011/Organization.svc", $xml);

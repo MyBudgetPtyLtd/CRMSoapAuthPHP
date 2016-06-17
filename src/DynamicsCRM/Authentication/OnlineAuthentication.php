@@ -25,7 +25,8 @@ class OnlineAuthentication extends Authenticator
         $keyIdentifierValues = $responseDom->getElementsByTagName( "KeyIdentifier" );
         $keyIdentifier = $keyIdentifierValues->item ( 0 )->textContent;
 
-        $tokenExpiresValues = $responseDom->getElementsByTagName( "Expires" );
+        //There's an Expires coming back in the header.
+        $tokenExpiresValues = $responseDom->getElementsByTagName( "RequestSecurityTokenResponse" )->item(0)->getElementsByTagName("Expires");
         $tokenExpires = $tokenExpiresValues->item ( 0 )->textContent;
 
         $authHeader = new OnlineAuthenticationToken();
