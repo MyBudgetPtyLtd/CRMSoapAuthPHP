@@ -3,7 +3,6 @@
 namespace DynamicsCRM;
 
 use DateTime;
-use DOMDocument;
 use DynamicsCRM\Authentication\Authenticator;
 use DynamicsCRM\Authentication\OnlineAuthentication;
 use DynamicsCRM\Authentication\OnPremisesAuthentication;
@@ -81,43 +80,47 @@ class DynamicsCRM
         $now = $_SERVER['REQUEST_TIME'];
 
         if ($token == null || (new DateTime($token->Expires))->getTimestamp() < $now ) {
-            $uri = $this->authenticationSettingsProvider->getCRMUri();
-            $username = $this->authenticationSettingsProvider->getUsername();
-            $password = $this->authenticationSettingsProvider->getPassword();
+            $token = $this->renewAuthToken();
 
-            if (empty($uri)) {
-                throw new Exception("CRM URI has not been configured");
-            }
-            if (empty($username)) {
-                throw new Exception("CRM Username has not been configured");
-            }
-            if (empty($password)) {
-                throw new Exception("CRM Password has not been configured");
-            }
-
-
-            $crmAuth = $this->CreateCrmAuth($uri, $username, $password);
-            $token = $crmAuth->Authenticate();
-
-            //Hits up CRM with a WhoAmI to get the user's ID and name
-            $tempCache = new SingleRequestAuthenticationCache();
-            $tempCache->storeAuthenticationToken($token);
-            $subRequest = new self($this->authenticationSettingsProvider, $tempCache, $this->logger);
-            /** @var WhoAmIResponse $whoAmIResponse */
-            $whoAmIResponse = ($subRequest->Request(new WhoAmIRequest()));
-            var_dump($whoAmIResponse);
-            /** @var RetrieveUserResponse $userResponse */
-            $request = new RetrieveUserRequest($whoAmIResponse->getUserId());
-            var_dump($request);
-            $userResponse = ($subRequest->Request($request));
-
-            $user = new CrmUser($whoAmIResponse->getUserId(), $userResponse->getFirstName(), $userResponse->getLastName());
-            var_export($user);
-            $this->authenticationCache->storeUserIdentity($user);
-            //Store the authentication token and identity.
-            $this->authenticationCache->storeAuthenticationToken($token);
         }
         return $token;
+    }
+
+    public function renewAuthToken() {
+	    $uri = $this->authenticationSettingsProvider->getCRMUri();
+	    $username = $this->authenticationSettingsProvider->getUsername();
+	    $password = $this->authenticationSettingsProvider->getPassword();
+
+	    if (empty($uri)) {
+		    throw new Exception("CRM URI has not been configured");
+	    }
+	    if (empty($username)) {
+		    throw new Exception("CRM Username has not been configured");
+	    }
+	    if (empty($password)) {
+		    throw new Exception("CRM Password has not been configured");
+	    }
+
+
+	    $crmAuth = $this->CreateCrmAuth($uri, $username, $password);
+	    $token = $crmAuth->Authenticate();
+
+	    //Hits up CRM with a WhoAmI to get the user's ID and name
+	    $tempCache = new SingleRequestAuthenticationCache();
+	    $tempCache->storeAuthenticationToken($token);
+	    $subRequest = new self($this->authenticationSettingsProvider, $tempCache, $this->logger);
+	    /** @var WhoAmIResponse $whoAmIResponse */
+	    $whoAmIResponse = ($subRequest->Request(new WhoAmIRequest()));
+	    /** @var RetrieveUserResponse $userResponse */
+	    $request = new RetrieveUserRequest($whoAmIResponse->getUserId());
+	    $userResponse = ($subRequest->Request($request));
+
+	    $user = new CrmUser($whoAmIResponse->getUserId(), $userResponse->getFirstName(), $userResponse->getLastName());
+	    $this->authenticationCache->storeUserIdentity($user);
+	    //Store the authentication token and identity.
+	    $this->authenticationCache->storeAuthenticationToken($token);
+        
+	    return $token;
     }
 
     /**
